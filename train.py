@@ -11,11 +11,13 @@ import logging
 from model import *
 from utils.general import *
 from torch.utils.tensorboard import SummaryWriter
+import numpy as np
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(message)s",level=logging.INFO)
 
 
-def train_epoch(model, optimizer, dataloader,epoch,freeze = [], tb_writer=None):
+def train_epoch(model, optimizer, dataloader,epoch, freeze = None):
     model.train()
     # Freeze
     # parameter names to freeze (full or partial)
@@ -64,6 +66,7 @@ def eval_epoch(model, dataloader):
 
         for i,(imgs,targets,paths) in pbar:
             imgs = imgs.to(model.device).float()/255.0
+            targets = targets.to(model.device).float()
             out, train_out = model(imgs)
             # numerical eval
             numerical_eval(mat,out,targets)

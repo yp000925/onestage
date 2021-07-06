@@ -198,7 +198,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.img_size = img_size
         self.augment = augment
         self.hyp = hyp
-        self.mosaic_border = [-img_size // 2, -img_size // 2]
+        # self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.path = path
 
         try:
