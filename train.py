@@ -112,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument('--project', default='train', help='save to project/name')
     parser.add_argument('--experiment',default='experiment',help ='experiment name')
     parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
-    opt = parser.parse_args([])
+    opt = parser.parse_args()
     # opt.train_data = '/Users/zhangyunping/PycharmProjects/Holo_synthetic/datayoloV5format/images/small_test'
     # opt.test_data = '/Users/zhangyunping/PycharmProjects/Holo_synthetic/datayoloV5format/images/small_test'
 
