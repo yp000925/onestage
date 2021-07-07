@@ -15,7 +15,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(message)s",level=logging.INFO)
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 def train_epoch(model, optimizer, dataloader,epoch, freeze = None):
     model.train()
@@ -91,7 +91,8 @@ def eval_epoch(model, dataloader):
     return mloss, accuracy
 
 def numerical_eval(mat,outs,targets):
-    preds = post_nms(outs,0.45)
+    # preds = post_nms(outs,0.45)
+    preds = nms_modified(outs, obj_thre=0.8, iou_thres=0.5, nc=256)
     for batch_idx in range(len(preds)): #batch_idx 指的是图片在batch里面的idx 即一张一张图片过
         labels = targets[targets[:, 0].int() == batch_idx][:, 1::]  # class, x,y,w,h
         detections = preds[batch_idx]  # x,y,x,y,conf,cls
