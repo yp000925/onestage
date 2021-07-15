@@ -93,9 +93,10 @@ class DetectLinearHead(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, hyp):
+    def __init__(self,hyp):
         super(Model, self).__init__()
         anchors = np.array([[10, 13, 16, 30, 33, 23], [30, 61, 62, 45, 59, 119], [116, 90, 156, 198, 373, 326]])
+
         self.no = 6
         self.nl = 3
         self.na = 3
@@ -228,7 +229,7 @@ class Model(nn.Module):
 
                 # Regression 这里和inference 保持一致就好
                 pxy = ps[:, :2].sigmoid() * 2. - 0.5
-                pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * self.scaled_anchors[i]
+                pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i]
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
                 iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, CIoU=True)  # iou(prediction, target)
                 lbox += (1.0 - iou).mean()  # iou loss
@@ -289,13 +290,16 @@ if __name__ == "__main__":
     hyp['box'] = 1
     hyp['obj'] = 1
     hyp['depth'] = 1
-    anchors = np.array([[10,13, 16,30, 33,23], [30,61, 62,45, 59,119], [116,90, 156,198, 373,326]])
+    # anchors = np.array([[10,13, 16,30, 33,23], [30,61, 62,45, 59,119], [116,90, 156,198, 373,326]])
+    anchors = np.array([[68.411, 67.417,80.912, 80.904,72.071, 113.98],
+           [115.41, 73.2,92.348, 92.396,103.63, 103.64],
+           [114.36, 114.33,124.89, 124.9,137.04, 137.08]])
     model = Model(hyp)
 
     preds = model((img,targets))
 
     # model._build_targets(preds,targets)
-    model.compute_loss(preds, targets)
+    # model.compute_loss(preds, targets)
 
 
 
