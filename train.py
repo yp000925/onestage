@@ -178,7 +178,7 @@ if __name__ == "__main__":
             if tb_writer:
                 tb_writer.add_scalar(tag, x, epoch)  # tensorboard
 
-        #save the last
+        # save the last
 
         ckpt = {
             'param': model.state_dict(),

@@ -13,7 +13,7 @@ from utils.general import *
 from torch.utils.tensorboard import SummaryWriter
 from utils.plot_utils import *
 
-ckpt_path = '/Users/zhangyunping/PycharmProjects/onestage/train/exp/last.pt'
+ckpt_path = '/Users/zhangyunping/PycharmProjects/onestage/train/bs32/best.pt'
 
 hyp = '/Users/zhangyunping/PycharmProjects/onestage/train_param.yaml'
 

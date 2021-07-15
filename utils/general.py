@@ -200,7 +200,7 @@ def nms_modified(prediction, obj_thre = 0.5, iou_thres = 0.6, nc=256, max_det=30
     """
     Run non-maximum suppression (NMS) modified version on depthmap output
     Args:
-        prediction: take the output directly from the network [bz,nc, 4+1+ncls]
+        prediction: take the output directly from the network [bz,na, 4+1+ncls]
                     the last channel stands for [bbox, objectiveness, normalized_depth] respectively
         obj_thre: obj_threshold
         iou_thres: iou threshold for bbox nms

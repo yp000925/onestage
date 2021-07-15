@@ -72,15 +72,12 @@ class Neck(nn.Module):
 class DetectLinearHead(nn.Module):
      # strides computed during build
 
-    def __init__(self, anchors=(), ch=(128,256,512), inplace=True):  # detection layer
+    def __init__(self, ch=(128,256,512), inplace=True):  # detection layer
         super(DetectLinearHead, self).__init__()
         self.no = 6  # number of outputs per anchor
         self.nl = 3  # number of detection layers
-        self.na = len(anchors[0]) // 2  # number of anchors
+        self.na = 3  # number of anchors
         self.grid = [torch.zeros(1)] * self.nl  # init grid
-        a = torch.tensor(anchors).float().view(self.nl, -1, 2)
-        self.register_buffer('anchors', a)  # shape(nl,na,2)
-        self.register_buffer('anchor_grid', a.clone().view(self.nl, 1, -1, 1, 1, 2))  # shape(nl,1,na,1,1,2)
         self.m = nn.ModuleList(nn.Conv2d(x, self.no * self.na, 1) for x in ch)  # output conv
         self.inplace = inplace  # use in-place ops (e.g. slice assignment)
 
@@ -101,21 +98,21 @@ class Model(nn.Module):
         anchors = np.array([[10, 13, 16, 30, 33, 23], [30, 61, 62, 45, 59, 119], [116, 90, 156, 198, 373, 326]])
         self.no = 6
         self.nl = 3
-        self.na = len(anchors[0]) // 2
-        self.head = DetectLinearHead(anchors = anchors,ch=(128,256,512))
+        self.na = 3
+        self.stride = torch.tensor([8, 16, 32])
+        anchors = torch.tensor(anchors).float().view(self.nl, -1, 2)
+        a = anchors/self.stride.view(-1, 1, 1)
+        # this buffer needed to be stored in the state_dict for further inference use
+        self.register_buffer('scaled_anchors', a)  # shape(nl,na,2)
+        self.register_buffer('anchor_grid', anchors.clone().view(self.nl, 1, -1, 1, 1, 2))  # shape(nl,1,na,1,1,2)
+
+        self.head = DetectLinearHead(ch=(128,256,512))
         self.backbone = Backbone()
         self.neck = Neck()
         self.grid = [torch.zeros(1)] * self.nl
         self.boxgain = hyp['box']
         self.objgain = hyp['obj']
         self.depthgain = hyp['depth']
-        self.stride = [8, 16, 32]
-
-
-        a = torch.tensor(anchors).float().view(self.nl, -1, 2)
-        # this buffer needed to be stored in the state_dict for further inference use
-        self.register_buffer('anchors', a)  # shape(nl,na,2)
-        self.register_buffer('anchor_grid', a.clone().view(self.nl, 1, -1, 1, 1, 2))  # shape(nl,1,na,1,1,2)
 
     def forward(self,x):
         if isinstance(x,tuple):
@@ -154,7 +151,7 @@ class Model(nn.Module):
         return torch.stack((xv, yv), 2).view((1, 1, ny, nx, 2)).float()
 
     def _build_targets(self, preds, targets):
-            # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
+            # Build targets for compute_loss(), input targets(image_idx,depth 0-255,x,y,w,h)
             na, nt = self.na, targets.shape[0]  # number of anchors, targets
             tcls, tbox, indices, anch = [], [], [], []
             gain = torch.ones(7, device=targets.device)  # normalized to gridspace gain
@@ -168,15 +165,17 @@ class Model(nn.Module):
                                 ], device=targets.device).float() * g  # offsets
 
             for i in range(self.nl): # 对每一层都要创建targets
-                anchors = self.anchors[i] # shape(na,2)
+                anchors = self.scaled_anchors[i] # shape(na,2)
                 gain[2:6] = torch.tensor(preds[i].shape)[[3, 2, 3, 2]]  # xyxy gain -> feature map size
-
                 # Match targets to anchors
                 t = targets * gain
                 if nt:
                     # Matches
                     r = t[:, :, 4:6] / anchors[:, None]  # wh ratio
+
                     anchor_t = 4.0 # anchor ratio threshold
+
+
                     j = torch.max(r, 1. / r).max(2)[0] < anchor_t  # compare 只保留和gt的shape满足一定比率的anchors，但并没有选最大值？
                     # 并没有保证每个bbox gt只对应一个anchor来做回归
                     # j = wh_iou(anchors, t[:, 4:6]) > model.hyp['iou_t']  # iou(3,n)=wh_iou(anchors(3,2), gwh(n,2))
@@ -229,7 +228,7 @@ class Model(nn.Module):
 
                 # Regression 这里和inference 保持一致就好
                 pxy = ps[:, :2].sigmoid() * 2. - 0.5
-                pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i]
+                pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * self.scaled_anchors[i]
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
                 iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, CIoU=True)  # iou(prediction, target)
                 lbox += (1.0 - iou).mean()  # iou loss
@@ -290,9 +289,10 @@ if __name__ == "__main__":
     hyp['box'] = 1
     hyp['obj'] = 1
     hyp['depth'] = 1
-    anchors = np.array([[10,13, 16,30, 33,23],[30,61, 62,45, 59,119],[116,90, 156,198, 373,326]])
+    anchors = np.array([[10,13, 16,30, 33,23], [30,61, 62,45, 59,119], [116,90, 156,198, 373,326]])
     model = Model(hyp)
-    preds = model(img)
+
+    preds = model((img,targets))
 
     # model._build_targets(preds,targets)
     model.compute_loss(preds, targets)
